@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Data Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body style="background-color: black;"> <!-- Apply black background -->
+
+    <div id="componentCharts"></div>
+    
+    <div id="correlationChart">
+        <canvas id="correlationCanvas"></canvas>
+    </div>
+    
+    <script>
+        function fetchComponentData() {
+            fetch('/component-data')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Component data:', data);
+                    plotComponentCharts(data);
+                    fetchCorrelationData();
+                })
+                .catch(error => {
+                    console.error('Error fetching component data:', error);
+                });
+        }
+
+        function fetchCorrelationData() {
+            fetch('/correlation-data')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Correlation data:', data);
+                    plotCorrelationChart(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching correlation data:', error);
+                });
+        }
+
+        function plotComponentCharts(componentData) {
+            const componentPairs = generateComponentPairs(Object.keys(componentData));
+            const componentChartsDiv = document.getElementById('componentCharts');
+
+            componentPairs.forEach(pair => {
+                const [component1, component2] = pair;
+                const canvasId = component1 + '-' + component2 + '-Chart';
+                const canvas = document.createElement('canvas');
+                canvas.id = canvasId;
+                canvas.width = 400;
+                canvas.height = 100;
+                componentChartsDiv.appendChild(canvas);
+                plotChart(canvasId, component1, component2, componentData[component1], componentData[component2]);
+            });
+        }
+
+        function plotCorrelationChart(correlationData) {
+            const labels = Object.keys(correlationData);
+            const values = Object.values(correlationData);
+            const ctx = document.getElementById('correlationCanvas').getContext('2d');
+            console.log('Rendering correlation chart...');
+            const barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Correlation Coefficient',
+                        data: values,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.5)',
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(255, 206, 86, 0.5)',
+                            'rgba(75, 192, 192, 0.5)',
+                            'rgba(153, 102, 255, 0.5)',
+                            'rgba(255, 159, 64, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Function to generate all possible pairs of components
+        function generateComponentPairs(components) {
+            const pairs = [];
+            for (let i = 0; i < components.length; i++) {
+                for (let j = i + 1; j < components.length; j++) {
+                    pairs.push([components[i], components[j]]);
+                }
+            }
+            return pairs;
+        }
+
+        function plotChart(canvasId, label1, label2, values1, values2) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const scatterData = values1.map((value, index) => ({ x: value, y: values2[index] }));
+            const lineData = calculateLineOfBestFit(values1, values2);
+            
+            console.log(`Plotting chart for ${label1} vs ${label2}`);
+            console.log('Scatter data:', scatterData);
+            console.log('Line data:', lineData);
+
+            const scatterChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: `${label1} vs ${label2}`,
+                        data: scatterData,
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Line of Best Fit',
+                        data: lineData,
+                        type: 'line',
+                        fill: false,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2,
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom'
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function calculateLineOfBestFit(values1, values2) {
+            if (values1.length !== values2.length || values1.length === 0) {
+                console.error('Values arrays must have the same non-zero length.');
+                return [];
+            }
+
+            const n = values1.length;
+            let sumX = 0;
+            let sumY = 0;
+            let sumXY = 0;
+            let sumXX = 0;
+
+            for (let i = 0; i < n; i++) {
+                sumX += values1[i];
+                sumY += values2[i];
+                sumXY += values1[i] * values2[i];
+                sumXX += values1[i] * values1[i];
+            }
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            // Generate line data points
+            const minX = Math.min(...values1);
+            const maxX = Math.max(...values1);
+            const lineData = [
+                { x: minX, y: slope * minX + intercept },
+                { x: maxX, y: slope * maxX + intercept }
+            ];
+
+            return lineData;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchComponentData();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Data Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="componentCharts"></div>
+    
+    <div id="correlationChart">
+        <canvas id="correlationCanvas"></canvas>
+    </div>
+    
+
+    <script>
+        // Function to fetch component data from the server
+        function fetchComponentData() {
+            fetch('/component-data')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Component data:', data);
+                    plotComponentCharts(data);
+                    fetchCorrelationData();
+                })
+                .catch(error => {
+                    console.error('Error fetching component data:', error);
+                });
+        }
+
+        // Function to fetch correlation data from the server
+        function fetchCorrelationData() {
+            fetch('/correlation-data')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Correlation data:', data);
+                    plotCorrelationChart(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching correlation data:', error);
+                });
+        }
+
+        // Function to plot component data for each pair of components
+        function plotComponentCharts(componentData) {
+            const componentPairs = generateComponentPairs(Object.keys(componentData));
+            const componentChartsDiv = document.getElementById('componentCharts'); // Corrected ID
+
+            // Iterate over each pair of components and plot the chart
+            componentPairs.forEach(pair => {
+                const [component1, component2] = pair;
+                const canvasId = component1 + '-' + component2 + '-Chart';
+                const canvas = document.createElement('canvas');
+                canvas.id = canvasId;
+                canvas.width = 400;
+                canvas.height = 100; // Decreased height
+                componentChartsDiv.appendChild(canvas);
+                plotChart(canvasId, component1, component2, componentData[component1], componentData[component2]);
+            });
+        }
+
+
+        // Function to plot correlation data as a bar chart
+        function plotCorrelationChart(correlationData) {
+            const labels = Object.keys(correlationData);
+            const values = Object.values(correlationData);
+            const ctx = document.getElementById('correlationCanvas').getContext('2d'); // Change to 'correlationCanvas'
+            console.log('Rendering correlation chart...');
+            const barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Correlation Coefficient',
+                        data: values,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)',
+                            'rgba(75, 192, 192, 0.2)',
+                            'rgba(153, 102, 255, 0.2)',
+                            'rgba(255, 159, 64, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+
+        // Function to generate all possible pairs of components
+        function generateComponentPairs(components) {
+            const pairs = [];
+            for (let i = 0; i < components.length; i++) {
+                for (let j = i + 1; j < components.length; j++) {
+                    pairs.push([components[i], components[j]]);
+                }
+            }
+            return pairs;
+        }
+
+        // Function to plot component data as scatter plot
+        function plotChart(canvasId, label1, label2, values1, values2) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const scatterChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: `${label1} vs ${label2}`,
+                        data: values1.map((value, index) => ({x: value, y: values2[index]})),
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom'
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fetch component data when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchComponentData();
+        });
+    </script>
+</body>
+</html>
